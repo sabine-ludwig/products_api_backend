@@ -2,6 +2,7 @@ from flask import Flask, request
 from flask_cors import CORS
 from flask_sqlalchemy import SQLAlchemy
 from flask_marshmallow import Marshmallow
+from marshmallow import post_load, fields, ValidationError
 from flask_migrate import Migrate
 from flask_restful import Api, Resource
 from dotenv import load_dotenv
@@ -23,17 +24,7 @@ CORS(app)
 Migrate(app, db)
 
 
-'''(5 points): As a developer, I want to build a REST web API in Flask, 
-so that I can make HTTP requests interact with the data set.'''
-
 # Models
-'''
-Create your database model(s) in app.py with the required properties, then run:
-flask db init (Creates tables)
-flask db migrate -m "Init" (Creates migration)
-flask db upgrade (Runs migration)
-'''
-
 class Product(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(255), nullable=False)
@@ -45,65 +36,66 @@ class Product(db.Model):
         return f"{self.name} Description: {self.description} Price: ${self.price} Inventory: {self.inventory_quantity}"
 
 # Schemas
-'''Create Marshmallow Schema in app.py'''
-
 class ProductSchema(ma.Schema):
+    id = fields.Integer(primary_key=True)
+    name = fields.String(required=True)
+    description = fields.String()
+    price = fields.Float(required=True)
+    inventory_quantity = fields.Integer(required=True)
+
     class Meta:
         fields = ("id", "name", "description", "price", "inventory_quantity")
+
+    @post_load
+    def create_product(self, data, **kwargs):
+        return Product(**data)
 
 product_schema = ProductSchema()
 products_schema = ProductSchema(many=True)
 
-# serialized_product = product_schema.dump(variable)
-
 # Resources
+class ProductListResource(Resource):
+    def get(self):
+        all_products = Product.query.all()
+        return products_schema.dump(all_products) 
+    
+    def post(self):
+        form_data = request.get_json()
+        try:
+            new_product = product_schema.load(form_data)
+            db.session.add(new_product)
+            db.session.commit()
+            return product_schema.dump(new_product), 201
+        except ValidationError as err:
+            return err.messages, 400
+    
+class ProductResource(Resource):
+    def get(self, pk):
+        product_from_db = Product.query.get_or_404(pk)
+        return product_schema.dump(product_from_db)
 
-'''(5 points): As a developer, I want to create a GET endpoint that responds 
-with a 200 success status code and all of the products within the Product table.
-(5 points): As a developer, I want to create a GET by id endpoint that does 
-the following things: 
-Accepts a value from the requests URL (The id of the product to retrieve).
-Returns a 200 status code. (Explicitly return this, not just allow it to default)
-Responds with the product in the database that has the id that was sent through the URL. 
+    def delete(self, pk):
+        product_from_db = Product.query.get_or_404(pk)
+        db.session.delete(product_from_db)
+        db.session.commit()
+        return '', 204
+    
+    def put(self, pk):
+        product_from_db = Product.query.get_or_404(pk)
+        
+        if 'name' in request.json:
+            product_from_db.name = request.json['name']
+        if 'description' in request.json:
+            product_from_db.description = request.json['description']
+        if 'price' in request.json:
+            product_from_db.price = request.json['price']
+        if 'inventory_quantity' in request.json:
+            product_from_db.inventory_quantity = request.json['inventory_quantity']
 
-(5 points): As a developer, I want to create a POST endpoint that does the following things: 
-Accepts a body object from the request in the form of a Product model. 
-Adds the new product to the database. 
-Returns a 201 status code. 
-Responds with the newly created product object.
-
-(5 points): As a developer, I want to create a PUT endpoint that does the following things: 
-Accepts a value from the requests URL (The id of the product to be updated). 
-Accepts a body object from the request in the form of a Product model. 
-Finds the product in the Product table and updates that product with the properties 
-that were sent in the requests body. 
-Returns a 200 status code.  (Explicitly return this, not just allow it to default)
-Responds with the newly updated product object. 
-
-(5 points): As a developer,  I want to create a DELETE endpoint that does the following things: 
-Accepts a value from the requests URL. 
-Deletes the Product from the database.
-Returns a 204 status code (NO CONTENT).
-'''
-
-
+        db.session.commit()
+        return product_schema.dump(product_from_db)
+        
 # Routes
+api.add_resource(ProductListResource, '/api/products/')
+api.add_resource(ProductResource, '/api/products/<int:pk>')
 
-'''(5 points): As a developer, I want to build a REST web API in Flask, 
-so that I can make HTTP requests interact with the data set.'''
-
-'''(5 points): As a developer, I want my API to serve content on the following url paths:
-Paths must match these exactly!
-127.0.0.1:5000/api/products/ 
-127.0.0.1:5000/api/products/<int:pk>
-'''
-
-# 127.0.0.1:5000/api/products/
-# 127.0.0.1:5000/api/products/<int:pk>
-
-'''(5 points): As a developer, I want to use Postman to make a 
-POST, PUT, DELETE, and both GET requests (get by id and get all) 
-request to my REST web API, save it to a collection, 
-and then export it as a JSON from Postman.'''
-
-'''Be sure to include the exported JSON file in your project folder and push it to GitHub!'''
