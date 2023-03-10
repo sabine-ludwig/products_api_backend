@@ -45,8 +45,16 @@ class Product(db.Model):
         return f"{self.name} Description: {self.description} Price: ${self.price} Inventory: {self.inventory_quantity}"
 
 # Schemas
-
 '''Create Marshmallow Schema in app.py'''
+
+class ProductSchema(ma.Schema):
+    class Meta:
+        fields = ("id", "name", "description", "price", "inventory_quantity")
+
+product_schema = ProductSchema()
+products_schema = ProductSchema(many=True)
+
+# serialized_product = product_schema.dump(variable)
 
 # Resources
 
