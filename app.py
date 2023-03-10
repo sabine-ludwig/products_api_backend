@@ -27,30 +27,22 @@ Migrate(app, db)
 so that I can make HTTP requests interact with the data set.'''
 
 # Models
-
-'''(2.5 points): As a developer, I want to create a Product model
-Property names must be in snake_case and match the following exactly!
-id - Integer
-name - String
-description - String
-price - Float
-inventory_quantity - Integer
-
+'''
 Create your database model(s) in app.py with the required properties, then run:
 flask db init (Creates tables)
 flask db migrate -m "Init" (Creates migration)
 flask db upgrade (Runs migration)
 '''
 
-class Product():
-    pass
+class Product(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(255), nullable=False)
+    description = db.Column(db.String(255))
+    price = db.Column(db.Float, nullable=False)
+    inventory_quantity = db.Column(db.Integer, nullable=False)
 
-# id - Integer
-# name - String
-# description - String
-# price - Float
-# inventory_quantity - Integer
-
+    def __repr__(self) -> str:
+        return f"{self.name} Description: {self.description} Price: ${self.price} Inventory: {self.inventory_quantity}"
 
 # Schemas
 
@@ -85,7 +77,6 @@ Accepts a value from the requests URL.
 Deletes the Product from the database.
 Returns a 204 status code (NO CONTENT).
 '''
-
 
 
 # Routes
